@@ -1,0 +1,47 @@
+generator client {
+    provider = "prisma-client"
+    output   = "../src/generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+model Novel {
+    id          String    @id @default(uuid()) @db.Uuid
+    title       String    @db.VarChar(300)
+    description String?   @db.Text
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+    chapters    Chapter[]
+}
+
+model Chapter {
+    id              String   @id @default(uuid()) @db.Uuid
+    novelId         String   @db.Uuid
+    number          Int
+    title           String   @db.VarChar(300)
+    sourceText      String   @db.Text
+    originalChinese String?  @db.Text
+    version         Int      @default(1)
+    createdAt       DateTime @default(now())
+
+    novel    Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+    segments Segment[]
+
+    @@unique([novelId, number])
+}
+
+model Segment {
+    id              String  @id @default(uuid()) @db.Uuid
+    chapterId       String  @db.Uuid
+    position        Int
+    startOffset     Int
+    endOffset       Int
+    sourceText      String  @db.Text
+    originalChinese String? @db.Text
+
+    chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+    @@unique([chapterId, position])
+}

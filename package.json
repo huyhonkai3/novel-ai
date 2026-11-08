@@ -1,0 +1,25 @@
+{
+  "name": "@novel-ai/api",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:api": "yarn workspace @novel-ai/api dev",
+    "build:api": "yarn workspace @novel-ai/api build",
+    "start:api": "yarn workspace @novel-ai/api start",
+    "typecheck": "yarn workspace @novel-ai/api typecheck",
+    "test:api": "yarn workspace @novel-ai/api test",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose stop postgres",
+    "db:validate": "yarn workspace @novel-ai/api db:validate",
+    "db:generate": "yarn workspace @novel-ai/api db:generate",
+    "db:migrate": "yarn workspace @novel-ai/api db:migrate"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module"
+}
