@@ -29,7 +29,7 @@ const schema = z.object({
 
     return (
       ["http:", "https:"].includes(url.protocol) &&
-      url.pathname.replace(/\/$/, "").endsWith("/v1") &&
+      url.pathname.replace(/\/$/, "") === "/v1" &&
       !url.search &&
       !url.hash &&
       !url.username &&
