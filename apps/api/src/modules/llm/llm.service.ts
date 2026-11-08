@@ -4,6 +4,16 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { AppError } from "../../lib/app-error.js";
 import type { TestLlmInput } from "./llm.schema.js";
 
+import { z } from "zod";
+
+const modelsResponseSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.string().min(1),
+    }),
+  ),
+});
+
 export class LlmService {
   private busy = false;
 
@@ -12,15 +22,28 @@ export class LlmService {
     private readonly defaultModel: string,
   ) {}
 
-  // Chỉ trả về model ID; /v1/models không đảm bảo model đã được load vào bộ nhớ.
+  // Kiểm tra response thô để phân biệt danh sách trống với sai endpoint.
   async listModels(signal?: AbortSignal) {
     try {
-      const page = await this.client.models.list({
-        timeout: 5000,
-        signal,
-      });
+      const response = await this.client.models
+        .list({
+          timeout: 5000,
+          signal,
+        })
+        .asResponse();
 
-      return page.data.map(({ id }) => ({ id }));
+      const body: unknown = await response.json();
+      const parsed = modelsResponseSchema.safeParse(body);
+
+      if (!parsed.success) {
+        throw new AppError(
+          502,
+          "LLM_INVALID_RESPONSE",
+          "LM Studio trả sai cấu trúc models. Kiểm tra LLM_BASE_URL phải kết thúc bằng /v1, không phải /api/v1.",
+        );
+      }
+
+      return parsed.data.data.map(({ id }) => ({ id }));
     } catch (error) {
       throw this.normalizeError(error);
     }
