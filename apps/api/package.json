@@ -8,7 +8,7 @@
     "build": "yarn db:generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.test.json",
-    "test": "node --import tsx --test tests/b1.test.ts",
+    "test": "node --import tsx --test tests/b2.test.ts",
     "db:validate": "prisma validate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev"

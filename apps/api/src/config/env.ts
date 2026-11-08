@@ -12,9 +12,15 @@ const schema = z.object({
 
   WEB_ORIGIN: z.url().default("http://localhost:5173"),
 
-  DATABASE_URL: z.url().refine((value) => {
-    // Zod có thể tiếp tục chạy refinement sau lỗi format.
-    // Tránh để URL parser ném lỗi thô ra ngoài luồng validation.
+  DATABASE_URL: z
+    .string()
+    .regex(
+      /^postgres(ql)?:\/\//,
+      "DATABASE_URL phải là PostgreSQL connection URL.",
+    ),
+
+  LLM_BASE_URL: z.url().refine((value) => {
+    // Refinement có thể chạy dù URL sai format; tránh để URL parser ném lỗi thô.
     if (!URL.canParse(value)) {
       return false;
     }
@@ -22,7 +28,7 @@ const schema = z.object({
     const url = new URL(value);
 
     return (
-      ["https:", "https:"].includes(url.protocol) &&
+      ["http:", "https:"].includes(url.protocol) &&
       url.pathname.replace(/\/$/, "").endsWith("/v1") &&
       !url.search &&
       !url.hash &&

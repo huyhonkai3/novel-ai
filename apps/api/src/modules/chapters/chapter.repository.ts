@@ -55,7 +55,7 @@ export class ChapterRepository {
         }),
 
       {
-        isolationLevel: "Repeatable",
+        isolationLevel: "RepeatableRead",
       },
     );
   }

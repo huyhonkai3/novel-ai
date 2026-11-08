@@ -1,5 +1,5 @@
 import { AppError } from "../../lib/app-error.js";
-import type { PageInput } from "../lib/content.schema.js";
+import type { PageInput } from "../../lib/content.schema.js";
 import type { NovelRepository } from "./novel.repository.js";
 
 import type { CreateNovelInput, UpdateNovelInput } from "./novel.schema.js";

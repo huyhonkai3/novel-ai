@@ -90,7 +90,7 @@ export class ChapterService {
     }
 
     return {
-      data: chapter.segment,
+      data: chapter.segments,
       meta: {
         ...page,
         total: chapter._count.segments,

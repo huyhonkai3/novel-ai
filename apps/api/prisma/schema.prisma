@@ -25,6 +25,7 @@ model Chapter {
     originalChinese String?  @db.Text
     version         Int      @default(1)
     createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
 
     novel    Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
     segments Segment[]
