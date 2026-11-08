@@ -1,0 +1,17 @@
+{
+  "document_symbols": "off",
+  "semantic_tokens": "off",
+  "document_folding_ranges": "on",
+  "format_on_save": "on",
+  "languages": {
+    "JavaScript": {
+      "formatter": "prettier",
+    },
+    "TypeScript": {
+      "formatter": "prettier",
+    },
+    "HTML": {
+      "formatter": "prettier",
+    },
+  },
+}

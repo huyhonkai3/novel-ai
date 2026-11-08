@@ -6,6 +6,22 @@ import type { TestLlmInput } from "./llm.schema.js";
 
 import { z } from "zod";
 
+export interface StreamLlmInput {
+  model: string;
+  messages: ChatCompletionMessageParam[];
+  temperature: number;
+  maxTokens: number;
+  timeoutMs: number;
+}
+
+export interface StreamLlmResult {
+  model: string;
+  output: string;
+  finishReason: string;
+  usage: unknown;
+  durationMs: number;
+}
+
 const modelsResponseSchema = z.object({
   data: z.array(
     z.object({
@@ -205,5 +221,132 @@ export class LlmService {
       "LLM_INVALID_RESPONSE",
       "Phản hồi LM Studio không đúng định dạng mong đợi.",
     );
+  }
+
+  // Dùng chung khóa với test() để toàn API chỉ chạy một inference.
+  async stream(
+    input: StreamLlmInput,
+    onDelta: (text: string) => Promise<void>,
+    signal?: AbortSignal,
+  ): Promise<StreamLlmResult> {
+    if (!input.model.trim()) {
+      throw new AppError(
+        400,
+        "MODEL_REQUIRED",
+        "Truyền model hoặc đặt LLM_MODEL_ID trong .env.",
+      );
+    }
+
+    if (this.busy) {
+      throw new AppError(
+        429,
+        "LLM_BUSY",
+        "Đang xử lý một prompt; hãy chờ hoàn tất.",
+      );
+    }
+
+    this.busy = true;
+
+    const startedAt = performance.now();
+
+    // Giới hạn cả vòng đời stream, kể cả khi upstream đã gửi headers.
+    const timeoutSignal = AbortSignal.timeout(input.timeoutMs);
+    const combinedSignal = signal
+      ? AbortSignal.any([signal, timeoutSignal])
+      : timeoutSignal;
+
+    let output = "";
+    let actualModel = input.model;
+    let finishReason: string | null = null;
+    let usage: unknown = null;
+
+    try {
+      const stream = await this.client.chat.completions.create(
+        {
+          model: input.model,
+          messages: input.messages,
+          temperature: input.temperature,
+          max_tokens: input.maxTokens,
+          stream: true,
+          stream_options: { include_usage: true },
+        },
+        { signal: combinedSignal },
+      );
+
+      for await (const chunk of stream) {
+        actualModel = chunk.model || actualModel;
+
+        if (chunk.usage) {
+          usage = chunk.usage;
+        }
+
+        const choice = chunk.choices.find((item) => item.index === 0);
+
+        if (choice?.finish_reason) {
+          finishReason = choice.finish_reason;
+        }
+
+        const delta = choice?.delta.content;
+
+        if (typeof delta !== "string" || !delta) {
+          continue;
+        }
+
+        if (output.length + delta.length > 100_000) {
+          throw new AppError(
+            502,
+            "LLM_OUTPUT_TOO_LARGE",
+            "Output vượt giới hạn cho phép.",
+          );
+        }
+
+        output += delta;
+
+        // Await cho phép tầng persistence tạp backpressure.
+        await onDelta(delta);
+      }
+
+      combinedSignal.throwIfAborted();
+
+      if (!finishReason) {
+        throw new AppError(
+          502,
+          "LLM_INCOMPLETE_STREAM",
+          "Stream kết thúc mà không có finish reason.",
+        );
+      }
+
+      if (!output.trim()) {
+        throw new AppError(
+          502,
+          "LLM_EMPTY_RESPONSE",
+          "Model không trả nội dung văn bản.",
+        );
+      }
+
+      return {
+        model: actualModel,
+        output,
+        finishReason,
+        usage,
+        durationMs: Math.round(performance.now() - startedAt),
+      };
+    } catch (error) {
+      if (timeoutSignal.aborted && !signal?.aborted) {
+        throw new AppError(
+          504,
+          "LLM_TIMEOUT",
+          "LM Studio phản hồi quá thời gian cho phép.",
+        );
+      }
+
+      if (signal?.aborted) {
+        throw new AppError(499, "LLM_CANCELLED", "Yêu cầu đã bị hủy.");
+      }
+
+      throw this.normalizeError(error);
+    } finally {
+      this.busy = false;
+    }
   }
 }

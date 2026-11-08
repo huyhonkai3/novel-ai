@@ -7,6 +7,14 @@ datasource db {
     provider = "postgresql"
 }
 
+enum GenerationStatus {
+    QUEUED
+    RUNNING
+    SUCCEEDED
+    TRUNCATED
+    FAILED
+}
+
 model Novel {
     id          String    @id @default(uuid()) @db.Uuid
     title       String    @db.VarChar(300)
@@ -27,8 +35,9 @@ model Chapter {
     createdAt       DateTime @default(now())
     updatedAt       DateTime @updatedAt
 
-    novel    Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
-    segments Segment[]
+    novel       Novel        @relation(fields: [novelId], references: [id], onDelete: Cascade)
+    segments    Segment[]
+    generations Generation[]
 
     @@unique([novelId, number])
 }
@@ -42,7 +51,49 @@ model Segment {
     sourceText      String  @db.Text
     originalChinese String? @db.Text
 
-    chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+    chapter     Chapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+    generations Generation[]
 
     @@unique([chapterId, position])
+}
+
+model Generation {
+    id        String  @id @default(uuid()) @db.Uuid
+    chapterId String  @db.Uuid
+    segmentId String? @db.Uuid
+
+    // Giữ ID gốc để tra lịch sử kể cả khi B2 tạo lại segment.
+    segmentKey     String @db.Uuid
+    chapterVersion Int
+    position       Int
+
+    // Snapshot giúp lịch sử không phụ thuộc nội dung chương hiện tại.
+    sourceText      String  @db.Text
+    originalChinese String? @db.Text
+    promptVersion   String
+    messages        Json
+    parameters      Json
+
+    model        String
+    actualModel  String?
+    status       GenerationStatus @default(QUEUED)
+    output       String           @default("") @db.Text
+    finishReason String?
+    usage        Json?
+    errorCode    String?
+    durationMs   Int?
+
+    createdAt  DateTime  @default(now())
+    startedAt  DateTime?
+    finishedAt DateTime?
+
+    chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+    // Tách lại segment vẫn giữ generation cùng snapshot của nó.
+    segment Segment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+
+    @@index([segmentId])
+    @@index([segmentKey, createdAt])
+    @@index([chapterId, createdAt])
+    @@index([status, createdAt])
 }
