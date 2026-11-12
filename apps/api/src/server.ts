@@ -11,6 +11,10 @@ import { GenerationRepository } from "./modules/generations/generation.repositor
 import { GenerationService } from "./modules/generations/generation.service.js";
 import { createGenerationRouter } from "./modules/generations/generation.routes.js";
 
+import { EditingRepository } from "./modules/editing/editing.repository.js";
+import { EditingService } from "./modules/editing/editing.service.js";
+import { createEditingRouter } from "./modules/editing/editing.routes.js";
+
 const env = loadEnv();
 const prisma = createPrisma(env.DATABASE_URL);
 
@@ -40,11 +44,16 @@ try {
   process.exit(1);
 }
 
+const editing = new EditingService(
+  new EditingRepository(prisma),
+);
+
 const app = createApp({
   llm,
   webOrigin: env.WEB_ORIGIN,
   contentRouter: createContentRouter(prisma),
   generationRouter: createGenerationRouter(generations),
+  editingRouter: createEditingRouter(editing),
 
   checkDatabase: async () => {
     await prisma.$queryRaw`SELECT 1`;

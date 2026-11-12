@@ -15,6 +15,14 @@ enum GenerationStatus {
     FAILED
 }
 
+enum RevisionKind {
+    MANUAL
+    AI_ACCEPT
+    AI_REJECT
+    RESTORE
+    APPROVE
+}
+
 model Novel {
     id          String    @id @default(uuid()) @db.Uuid
     title       String    @db.VarChar(300)
@@ -38,6 +46,7 @@ model Chapter {
     novel       Novel        @relation(fields: [novelId], references: [id], onDelete: Cascade)
     segments    Segment[]
     generations Generation[]
+    revisions   Revision[]
 
     @@unique([novelId, number])
 }
@@ -54,7 +63,21 @@ model Segment {
     chapter     Chapter      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
     generations Generation[]
 
+    // Version chỉnh sửa độc lập với version nội dung chương.
+    editVersion Int @default(0)
+
+    draftRevisionId    String? @db.Uuid
+    approvedRevisionId String? @db.Uuid
+
+    revisions Revision[] @relation("SegmentRevisions")
+
+    draftRevision Revision? @relation("SegmentDraft", fields: [draftRevisionId], references: [id], onDelete: SetNull)
+
+    approvedRevision Revision? @relation("SegmentApproved", fields: [approvedRevisionId], references: [id], onDelete: SetNull)
+
     @@unique([chapterId, position])
+    @@index([draftRevisionId])
+    @@index([approvedRevisionId])
 }
 
 model Generation {
@@ -92,8 +115,54 @@ model Generation {
     // Tách lại segment vẫn giữ generation cùng snapshot của nó.
     segment Segment? @relation(fields: [segmentId], references: [id], onDelete: SetNull)
 
+    revisions Revision[]
+
     @@index([segmentId])
     @@index([segmentKey, createdAt])
     @@index([chapterId, createdAt])
     @@index([status, createdAt])
+}
+
+model Revision {
+    id        String  @id @default(uuid()) @db.Uuid
+    chapterId String  @db.Uuid
+    segmentId String? @db.Uuid
+
+    // Không mất khả năng tra lịch sử khi B2 tạo lại segment.
+    segmentKey     String @db.Uuid
+    chapterVersion Int
+    sequence       Int
+
+    kind RevisionKind
+
+    // AI_REJECT là sự kiện đánh giá, không chứa bản dịch mới.
+    text String? @db.Text
+
+    sourceText      String  @db.Text
+    originalChinese String? @db.Text
+
+    // Giữ nguồn gốc AI qua các lần sửa và duyệt.
+    generationId String? @db.Uuid
+
+    // Revision làm cơ sở cho lần sửa, restore hoặc approve này.
+    parentRevisionId String? @db.Uuid
+
+    createdAt DateTime @default(now())
+    chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+    generation Generation? @relation(fields: [generationId], references: [id], onDelete: SetNull)
+
+    parent Revision? @relation("RevisionParent", fields: [parentRevisionId], references: [id], onDelete: SetNull)
+
+    children Revision[] @relation("RevisionParent")
+
+    draftFor    Segment[] @relation("SegmentDraft")
+    approvedFor Segment[] @relation("SegmentApproved")
+    segment     Segment?  @relation("SegmentRevisions", fields: [segmentId], references: [id], onDelete: SetNull)
+
+    @@unique([segmentKey, sequence])
+    @@index([segmentId])
+    @@index([chapterId, createdAt])
+    @@index([generationId])
+    @@index([parentRevisionId])
 }

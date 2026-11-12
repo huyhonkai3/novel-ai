@@ -16,6 +16,7 @@ interface AppDependencies {
   // Cho phép test B1 độc lập mà không khởi tạo repository nội dung.
   contentRouter?: Router;
   generationRouter?: Router;
+  editingRouter?: Router;
 }
 
 // Inject dependency để test HTTP mà không cần DB hoặc model thật.
@@ -25,6 +26,7 @@ export function createApp({
   webOrigin,
   contentRouter,
   generationRouter,
+  editingRouter,
 }: AppDependencies) {
   const app = express();
 
@@ -76,6 +78,10 @@ export function createApp({
 
   if (generationRouter) {
     app.use("/api", generationRouter);
+  }
+
+  if (editingRouter) {
+    app.use("/api", editingRouter);
   }
 
   app.use((_req, _res, next) => {
