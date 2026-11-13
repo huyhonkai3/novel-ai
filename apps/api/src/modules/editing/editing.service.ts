@@ -59,9 +59,9 @@ export class EditingService {
 
   // Hỗ trợ lịch sử theo segment hoặc theo toàn chương.
   history(
-    where: { segmentKey?: string, chapterId: string },
-    page: PageInput
+    where: { segmentKey?: string; chapterId?: string },
+    page: PageInput,
   ) {
-    return this.repo.history(where, page)
+    return this.repo.history(where, page);
   }
 }

@@ -2,9 +2,10 @@ import { AppError } from "../../lib/app-error.js";
 
 export type EditCommand =
   | { type: "SAVE_DRAFT"; text: string }
-  | { type: "ACCEPT" | "REJECT"; generationId: string }
-  | { type: "RESTORE" | "APPROVE"; revisionId: string };
-
+  | { type: "ACCEPT"; generationId: string }
+  | { type: "REJECT"; generationId: string }
+  | { type: "RESTORE"; revisionId: string }
+  | { type: "APPROVE"; revisionId: string };
 export interface RevisionCandidate {
   id: string;
   segmentKey: string;
