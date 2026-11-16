@@ -12,6 +12,9 @@ import {
 import { buildGenerationPrompt } from "./generation.prompt.js";
 import type { GenerateSegmentInput } from "./generation.schema.js";
 
+import { findGlossaryHints } from "../translation-context/glossary.repository.js";
+import { findMemoryExamples } from "../translation-context/memory.repository.js";
+
 export class GenerationRepository {
   constructor(private readonly db: PrismaClient) {}
 
@@ -48,7 +51,10 @@ export class GenerationRepository {
           where: { id: segmentId },
           include: {
             chapter: {
-              select: { version: true },
+              select: {
+                version: true,
+                novelId: true,
+              },
             },
           },
         });
@@ -78,10 +84,26 @@ export class GenerationRepository {
           select: { sourceText: true },
         });
 
+        // Dùng novelId lấy từ segment đã khóa để giới hạn ngữ cảnh đúng truyện.
+        const glossary = await findGlossaryHints(
+          tx,
+          segment.chapter.novelId,
+          segment.sourceText,
+          segment.originalChinese,
+        );
+
+        const memory = await findMemoryExamples(
+          tx,
+          segment.chapter.novelId,
+          segment.sourceText,
+          segment.id,
+        );
+
         const prompt = buildGenerationPrompt(
           segment,
           previous?.sourceText ?? null,
           input,
+          { glossary, memory },
         );
 
         return tx.generation.create({

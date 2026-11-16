@@ -8,6 +8,8 @@ import { createNovelRouter } from "./novels/novel.routes.js";
 import { ChapterRepository } from "./chapters/chapter.repository.js";
 import { ChapterService } from "./chapters/chapter.service.js";
 
+import { createTranslationContextRouter } from "./translation-context/context.routes.js";
+
 import {
   createChapterCollectionRouter,
   createChapterRouter,
@@ -29,6 +31,8 @@ export function createContentRouter(prisma: PrismaClient) {
   );
 
   router.use("/chapters", createChapterRouter(chapters));
+
+  router.use("/novels/:novelId", createTranslationContextRouter(prisma));
 
   return router;
 }

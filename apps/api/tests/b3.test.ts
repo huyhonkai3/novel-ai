@@ -127,7 +127,7 @@ test("prompt giữ nguyên nguồn và phân tách dữ liệu khỏi system ins
     }),
   );
 
-  assert.equal(prompt.promptVersion, "vi-translation-v1");
+  assert.equal(prompt.promptVersion, "vi-translation-v2");
   assert.equal(prompt.messages[0]?.role, "system");
   assert.equal(prompt.messages[1]?.role, "user");
 
